@@ -10,9 +10,13 @@ import {
   socGroups,
   simulateAll,
   sensitivitySweep,
+  tornadoAnalysis,
   totalUSEmployment,
+  PARAM_PROVENANCE,
+  DEMAND_ELASTICITY_PRESETS,
   type TaskDistribution,
   type GroupResult,
+  type ParamSource,
 } from "./model";
 
 type ParamOverrides = Record<string, Partial<TaskDistribution>>;
@@ -47,6 +51,31 @@ const C = {
 } as const;
 
 // ─── Components ─────────────────────────────────────────────────────────────
+
+function ProvenanceBadge({ source }: { source: ParamSource }) {
+  const styles: Record<ParamSource, { bg: string; fg: string; label: string }> = {
+    data: { bg: "#e0f0e6", fg: "#2d6a3e", label: "DATA" },
+    derived: { bg: "#e8ecf4", fg: "#3a5078", label: "DERIVED" },
+    assumed: { bg: "#faf0e0", fg: "#8a6a0a", label: "ASSUMED" },
+  };
+  const s = styles[source];
+  return (
+    <span
+      className="inline-block text-[8px] font-bold tracking-[0.06em] px-1.5 py-0.5 rounded ml-1.5"
+      style={{ background: s.bg, color: s.fg, lineHeight: 1 }}
+      title={PARAM_PROVENANCE[Object.keys(PARAM_PROVENANCE).find(
+        (k) => PARAM_PROVENANCE[k as keyof TaskDistribution].source === source
+      ) as keyof TaskDistribution]?.citation ?? ""}
+    >
+      {s.label}
+    </span>
+  );
+}
+
+function ProvenanceTag({ paramKey }: { paramKey: keyof TaskDistribution }) {
+  const prov = PARAM_PROVENANCE[paramKey];
+  return <ProvenanceBadge source={prov.source} />;
+}
 
 function TooltipInfo({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
@@ -100,10 +129,11 @@ function TooltipInfo({ text }: { text: string }) {
 }
 
 function Slider({
-  label, value, onChange, min, max, step, suffix = "", helpText, tooltip,
+  label, value, onChange, min, max, step, suffix = "", helpText, tooltip, provenanceKey,
 }: {
   label: string; value: number; onChange: (v: number) => void;
   min: number; max: number; step: number; suffix?: string; helpText?: string; tooltip?: string;
+  provenanceKey?: keyof TaskDistribution;
 }) {
   const decimals = step < 0.005 ? 3 : step < 0.1 ? 2 : step < 1 ? 1 : 0;
   return (
@@ -111,6 +141,7 @@ function Slider({
       <div className="flex justify-between items-baseline mb-1">
         <div className="flex items-center">
           <label className="text-[11px] font-semibold tracking-wide uppercase" style={{ color: C.inkSec }}>{label}</label>
+          {provenanceKey && <ProvenanceTag paramKey={provenanceKey} />}
           {tooltip && <TooltipInfo text={tooltip} />}
         </div>
         <span className="font-mono text-xs font-semibold" style={{ color: C.navy }}>
@@ -676,7 +707,9 @@ function WhitePaper({ onSwitchToSim }: { onSwitchToSim: () => void }) {
           <li><strong style={{ color: C.ink }}>Parameters are uncertain.</strong> We have decent empirical data for current automation and theoretical ceilings, but adoption speeds, new task creation rates, and demand elasticities are calibrated estimates, not measured values. The sensitivity analysis helps you see how much these assumptions matter.</li>
           <li><strong style={{ color: C.ink }}>Occupations are not monolithic.</strong> Each SOC major group contains dozens of specific occupations with very different exposure profiles. &ldquo;Computer & Math&rdquo; includes both software developers (highly exposed) and actuaries (moderately exposed). The model operates at the aggregate level.</li>
           <li><strong style={{ color: C.ink }}>No cross-occupation dynamics.</strong> In reality, workers displaced from one occupation may move to another, affecting wages and employment across the economy. This model treats each occupation independently.</li>
-          <li><strong style={{ color: C.ink }}>No wage effects.</strong> The model only tracks employment quantity, not wages. Even in occupations where employment grows, wages could fall if the nature of remaining work changes (e.g., from high-skill to AI-supervision roles).</li>
+          <li><strong style={{ color: C.ink }}>No wage effects.</strong> The model only tracks employment quantity, not wages. This is a quantity-only model: employment changes assume elastic labor supply at constant wages. A proper wage model requires CES labor market structure with skill heterogeneity and relative wage dynamics (Katz &amp; Murphy, 1992). Even in occupations where employment grows, wages could fall if the nature of remaining work changes.</li>
+          <li><strong style={{ color: C.ink }}>Observed exposure overstates automation.</strong> Massenkoff &amp; McCrory&rsquo;s &ldquo;observed&rdquo; exposure includes both automation and augmentation usage, weighted by &alpha;&#8348; (0.5 = pure augmentation, 1.0 = pure automation). Using it directly as the initial automation frontier I&#8320; is an upper bound. The augmentation portion actually contributes to productivity growth, not displacement.</li>
+          <li><strong style={{ color: C.ink }}>Demand elasticity lacks calibration.</strong> The most influential parameter (&epsilon;) is set by heuristic, not empirical estimation. Acemoglu &amp; Restrepo (2019) implicitly assume &epsilon; &asymp; 1. Bessen (2019) documents historical ranges from 0.5 (textiles) to 3+ (computing). The simulation&rsquo;s per-sector defaults are starting points &mdash; use the presets and slider to explore sensitivity.</li>
           <li><strong style={{ color: C.ink }}>Linear assumptions in a nonlinear world.</strong> The model uses constant annual rates for adoption, new task creation, and productivity growth. In reality, these rates may accelerate, decelerate, or shift discontinuously as AI capabilities evolve.</li>
           <li><strong style={{ color: C.ink }}>No policy response.</strong> The model ignores government intervention &mdash; retraining programs, regulation, AI taxes, universal basic income &mdash; that could significantly alter outcomes.</li>
         </ul>
@@ -705,13 +738,22 @@ function WhitePaper({ onSwitchToSim }: { onSwitchToSim: () => void }) {
             Eloundou, T., Manning, S., Mishkin, P., & Rock, D. (2023). GPTs are GPTs: An Early Look at the Labor Market Impact Potential of Large Language Models. <em>arXiv:2303.10130</em>.
           </p>
           <p>
+            Bessen, J. (2019). Automation and jobs: When technology boosts employment. <em>Economic Policy</em>, 34(100), 589&ndash;626.
+          </p>
+          <p>
             Jevons, W. S. (1865). <em>The Coal Question: An Inquiry Concerning the Progress of the Nation, and the Probable Exhaustion of our Coal-Mines</em>. Macmillan.
+          </p>
+          <p>
+            Katz, L. F., & Murphy, K. M. (1992). Changes in Relative Wages, 1963&ndash;1987: Supply and Demand Factors. <em>Quarterly Journal of Economics</em>, 107(1), 35&ndash;78.
           </p>
           <p>
             Massenkoff, M., & McCrory, P. (2026, March 5). Labor market impacts of AI: A new measure and early evidence. Anthropic. <a href="https://www.anthropic.com/research/labor-market-impacts" target="_blank" rel="noopener noreferrer" style={{ color: C.navy }}>https://www.anthropic.com/research/labor-market-impacts</a>
           </p>
           <p>
             U.S. Bureau of Labor Statistics. (2021). Occupational Employment and Wage Statistics (OEWS). May 2021 National Occupational Employment and Wage Estimates.
+          </p>
+          <p>
+            U.S. Bureau of Labor Statistics. (2021). Employment Projections, 2020&ndash;2030.
           </p>
         </div>
 
@@ -797,6 +839,12 @@ export default function Home() {
   const sensitivityData = useMemo(() => {
     return sensitivitySweep(selectedGroup, effectiveOverrides[selectedSoc] || {}, sensitivityParam, sensConfig.range, years);
   }, [selectedGroup, effectiveOverrides, selectedSoc, sensitivityParam, sensConfig.range, years]);
+
+  const tornadoData = useMemo(() => {
+    return tornadoAnalysis(selectedGroup, effectiveOverrides[selectedSoc] || {}, years);
+  }, [selectedGroup, effectiveOverrides, selectedSoc, years]);
+
+  const [showBLS, setShowBLS] = useState(true);
 
   const totalFinal = results.reduce((s, r) => s + r.finalEmployment, 0);
   const totalPctChange = ((totalFinal / totalUSEmployment) - 1) * 100;
@@ -983,11 +1031,12 @@ export default function Home() {
               {/* Data provenance */}
               <div className="rounded-xl p-3 mb-4 space-y-2" style={{ background: C.surface2, border: `1px solid ${C.border}` }}>
                 {[
-                  { label: "Observed (Anthropic)", value: `${(selectedGroup.observed * 100).toFixed(1)}%` },
+                  { label: "Observed (Anthropic) \u2191", value: `${(selectedGroup.observed * 100).toFixed(1)}%` },
                   { label: `Theoretical ${ceilingMode}`, value: `${(effectiveParams.theoreticalCeiling * 100).toFixed(1)}%` },
                   { label: "Theoretical \u03B3", value: `${(selectedGroup.gamma * 100).toFixed(1)}%` },
                   { label: "Adoption ratio", value: `${selectedGroup.beta > 0 ? ((selectedGroup.observed / selectedGroup.beta) * 100).toFixed(0) : 0}%` },
                   { label: "Employment", value: fmtEmp(selectedGroup.employment) },
+                  { label: "BLS 2020-30 (pre-AI)", value: `${selectedGroup.blsProjectedGrowth >= 0 ? "+" : ""}${selectedGroup.blsProjectedGrowth.toFixed(1)}%` },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between text-[10px]">
                     <span style={{ color: C.inkTert }}>{row.label}</span>
@@ -1000,19 +1049,24 @@ export default function Home() {
                   <span style={{ color: C.inkTert }}>Ceiling</span>
                   <span style={{ color: C.rust }}>&gamma; max</span>
                 </div>
+                <div className="text-[9px] mt-1 leading-snug" style={{ color: C.ochre }}>
+                  &uarr; Observed is an <strong>upper bound</strong> on automation &mdash; includes augmentation (human+AI tasks). True I&#8320; may be lower.
+                </div>
               </div>
 
               <Slider
                 label="Current Automation" value={effectiveParams.currentAutomation}
                 onChange={(v) => updateParam(selectedSoc, "currentAutomation", v)}
                 min={0} max={0.8} step={0.005}
-                helpText="Fraction of tasks where AI is deployed today"
-                tooltip="Starting point of the automation frontier — the fraction of tasks where AI is actually deployed today, from Anthropic's observed usage data. Higher values mean less room for further displacement but higher baseline AI-driven productivity. This is empirical data, not an estimate."
+                provenanceKey="currentAutomation"
+                helpText="Upper bound — includes augmentation (see note below)"
+                tooltip="Starting point of the automation frontier from Anthropic's observed usage data. IMPORTANT: This is an upper bound on true automation because Massenkoff & McCrory's measure includes both automation AND augmentation (human+AI collaboration). The gap between this value and true automation represents tasks where AI assists but doesn't replace humans — contributing to productivity growth instead. Adjust downward to model lower true-automation share."
               />
               <Slider
                 label="Theoretical Ceiling" value={effectiveParams.theoreticalCeiling}
                 onChange={(v) => updateParam(selectedSoc, "theoreticalCeiling", v)}
                 min={0} max={1} step={0.01}
+                provenanceKey="theoreticalCeiling"
                 helpText="Max automatable fraction from Eloundou et al."
                 tooltip="Maximum fraction of tasks that could be automated given current/near-term AI. From Eloundou et al. estimates. The automation frontier cannot exceed this value (until the ceiling itself grows via Ceiling Growth). The gap between Current Automation and this ceiling determines how much displacement headroom remains."
               />
@@ -1020,6 +1074,7 @@ export default function Home() {
                 label="Adoption Speed" value={effectiveParams.adoptionSpeed}
                 onChange={(v) => updateParam(selectedSoc, "adoptionSpeed", v)}
                 min={0} max={0.4} step={0.005} suffix="/yr"
+                provenanceKey="adoptionSpeed"
                 helpText="Fraction of remaining gap closed per year (S-curve)"
                 tooltip="Fraction of remaining automation gap closed annually. Creates S-curve dynamics — fast early adoption slowing near the ceiling. Default varies by sector: knowledge work ~12%, service ~8%, manual ~5%, adjusted by current adoption momentum. Drives displacement and demand forces."
               />
@@ -1027,6 +1082,7 @@ export default function Home() {
                 label="Ceiling Growth" value={effectiveParams.ceilingGrowthRate}
                 onChange={(v) => updateParam(selectedSoc, "ceilingGrowthRate", v)}
                 min={0} max={0.1} step={0.005} suffix="/yr"
+                provenanceKey="ceilingGrowthRate"
                 helpText="Annual ceiling expansion as AI capabilities improve"
                 tooltip="Annual expansion of the theoretical ceiling as AI capabilities improve. Default: knowledge work 2%/yr, service 1%/yr, manual 0.5%/yr. Higher values mean more tasks become automatable over time. Drives the displacement force."
               />
@@ -1034,6 +1090,7 @@ export default function Home() {
                 label="New Task Rate" value={effectiveParams.newTaskRate}
                 onChange={(v) => updateParam(selectedSoc, "newTaskRate", v)}
                 min={0} max={0.1} step={0.005} suffix="/yr"
+                provenanceKey="newTaskRate"
                 helpText="Reinstatement: new human tasks created per year"
                 tooltip="Annual new task creation rate — Acemoglu & Restrepo's 'reinstatement' effect. Default: knowledge 1–3%/yr scaled by exposure level, service 0.5–1.5%/yr, manual 0.1–0.5%/yr. The primary counterweight to displacement. Drives reinstatement force."
               />
@@ -1041,6 +1098,7 @@ export default function Home() {
                 label="Productivity Growth" value={effectiveParams.humanProductivityGrowth}
                 onChange={(v) => updateParam(selectedSoc, "humanProductivityGrowth", v)}
                 min={1.0} max={1.5} step={0.01} suffix="x/yr"
+                provenanceKey="humanProductivityGrowth"
                 helpText="Annual productivity multiplier on human tasks"
                 tooltip="Annual multiplier on human worker productivity for remaining (non-automated) tasks. A lawyer using AI for research is faster — that's productivity growth. At 1.0x, no AI-driven gain. At 1.10x, humans are 10% more productive per year. Interacts with demand elasticity for the Jevons effect: higher productivity × higher elasticity = more demand expansion."
               />
@@ -1048,9 +1106,27 @@ export default function Home() {
                 label="Demand Elasticity" value={effectiveParams.demandElasticity}
                 onChange={(v) => updateParam(selectedSoc, "demandElasticity", v)}
                 min={0.1} max={4} step={0.1}
+                provenanceKey="demandElasticity"
                 helpText="Jevons paradox: >1 elastic, <1 inelastic"
-                tooltip="The Jevons parameter — how much output demand expands when productivity lowers costs. >1 (elastic): demand grows faster than productivity, employment rises despite automation. =1: balanced. <1 (inelastic): fewer workers needed. Default varies by sector: knowledge work 1.4–2.2, service 0.7–1.5, manual 0.3–0.6."
+                tooltip="The Jevons parameter — how much output demand expands when productivity lowers costs. >1 (elastic): demand grows faster than productivity, employment rises despite automation. =1: balanced. <1 (inelastic): fewer workers needed. A&R (2019) implicitly ε≈1. Bessen (2019) range: 0.5–3+. Default varies by sector — ASSUMED, not calibrated."
               />
+              {/* Demand Elasticity Presets */}
+              <div className="flex gap-1 mt-1 mb-4">
+                {Object.entries(DEMAND_ELASTICITY_PRESETS).map(([key, preset]) => (
+                  <button
+                    key={key}
+                    onClick={() => updateParam(selectedSoc, "demandElasticity", preset.value)}
+                    className="flex-1 text-[9px] py-1.5 rounded-md font-semibold transition-all duration-150"
+                    style={Math.abs(effectiveParams.demandElasticity - preset.value) < 0.05
+                      ? { background: C.navy, color: "#fff", border: `1px solid ${C.navy}` }
+                      : { background: C.surface2, color: C.inkTert, border: `1px solid ${C.border}` }
+                    }
+                    title={preset.description}
+                  >
+                    {preset.label.split("(")[0].trim()}
+                  </button>
+                ))}
+              </div>
             </Card>
           </div>
 
@@ -1069,17 +1145,27 @@ export default function Home() {
 
             {/* Bar chart */}
             <Card>
-              <SectionTitle sub={`Ceiling: ${ceilingMode === "alpha" ? "\u03B1 (direct LLM only)" : ceilingMode === "beta" ? "\u03B2 (partial tools)" : "\u03B3 (full tools)"} \u00B7 Click bars to select`}>
-                Employment Change at Year {years}
-              </SectionTitle>
+              <div className="flex justify-between items-start">
+                <SectionTitle sub={`Ceiling: ${ceilingMode === "alpha" ? "\u03B1 (direct LLM only)" : ceilingMode === "beta" ? "\u03B2 (partial tools)" : "\u03B3 (full tools)"} \u00B7 Click bars to select`}>
+                  Employment Change at Year {years}
+                </SectionTitle>
+                <label className="flex items-center gap-1.5 text-[10px] cursor-pointer mt-1" style={{ color: C.inkTert }}>
+                  <input type="checkbox" checked={showBLS} onChange={(e) => setShowBLS(e.target.checked)} className="rounded" />
+                  Show BLS 2020-30
+                </label>
+              </div>
               <ResponsiveContainer width="100%" height={600}>
                 <BarChart
-                  data={sortedResults.map((r) => ({
-                    name: r.name,
-                    soc: r.soc,
-                    pctChange: r.finalPctChange,
-                    emp: r.baselineEmployment,
-                  }))}
+                  data={sortedResults.map((r) => {
+                    const g = socGroups.find((g) => g.soc === r.soc)!;
+                    return {
+                      name: r.name,
+                      soc: r.soc,
+                      pctChange: r.finalPctChange,
+                      emp: r.baselineEmployment,
+                      blsProjected: showBLS ? g.blsProjectedGrowth : undefined,
+                    };
+                  })}
                   layout="vertical"
                   margin={{ top: 5, right: 80, left: 10, bottom: 5 }}
                   onClick={(state: Record<string, unknown>) => {
@@ -1093,13 +1179,20 @@ export default function Home() {
                   <XAxis type="number" tickFormatter={(v) => `${v}%`} />
                   <YAxis type="category" dataKey="name" width={175} tick={{ fontSize: 11 }} />
                   <Tooltip
-                    formatter={(value, _name, props) => [
-                      `${Number(value).toFixed(1)}% (${fmtEmp(props.payload.emp)} workers)`,
-                      "Employment Change",
-                    ]}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    formatter={((value: any, name: any, props: any) => {
+                      const v = Number(value);
+                      if (name === "blsProjected") return [`${v.toFixed(1)}%`, "BLS 2020-30 (pre-AI)"];
+                      const emp = props?.payload?.emp;
+                      return [`${v.toFixed(1)}%${emp ? ` (${fmtEmp(emp)} workers)` : ""}`, "Model Projection"];
+                    }) as any}
                   />
+                  <Legend verticalAlign="top" height={30} iconSize={10} />
                   <ReferenceLine x={0} stroke={C.borderStrong} strokeWidth={1.5} />
-                  <Bar dataKey="pctChange" radius={[0, 4, 4, 0]} barSize={18} cursor="pointer">
+                  {showBLS && (
+                    <Bar dataKey="blsProjected" name="BLS 2020-30 (pre-AI)" radius={[0, 3, 3, 0]} barSize={8} fill={C.ochre} opacity={0.5} />
+                  )}
+                  <Bar dataKey="pctChange" name="Model" radius={[0, 4, 4, 0]} barSize={18} cursor="pointer">
                     {sortedResults.map((r, i) => (
                       <Cell
                         key={i}
@@ -1112,6 +1205,11 @@ export default function Home() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              {showBLS && (
+                <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
+                  BLS projections are pre-AI (2020-2030 vintage). Divergence from model is expected: BLS captures demographics and trends, not AI-specific effects.
+                </p>
+              )}
             </Card>
 
             {/* Timeline row */}
@@ -1194,6 +1292,7 @@ export default function Home() {
                         <th className="text-right py-2 px-1 font-semibold text-[10px] uppercase tracking-wide" style={{ color: C.inkTert }}>Obs</th>
                         <th className="text-right py-2 px-1 font-semibold text-[10px] uppercase tracking-wide" style={{ color: C.inkTert }}>Ceil</th>
                         <th className="text-right py-2 px-1 font-semibold text-[10px] uppercase tracking-wide" style={{ color: C.inkTert }}>Emp</th>
+                        <th className="text-right py-2 px-1 font-semibold text-[10px] uppercase tracking-wide" style={{ color: C.ochre }}>BLS</th>
                         <th className="text-right py-2 pl-1 font-semibold text-[10px] uppercase tracking-wide" style={{ color: C.inkTert }}>Chg</th>
                       </tr>
                     </thead>
@@ -1218,6 +1317,7 @@ export default function Home() {
                             <td className="py-2 px-1 text-right font-mono" style={{ color: C.inkTert }}>{(g.observed * 100).toFixed(0)}%</td>
                             <td className="py-2 px-1 text-right font-mono" style={{ color: C.inkTert }}>{(ceil * 100).toFixed(0)}%</td>
                             <td className="py-2 px-1 text-right font-mono" style={{ color: C.inkTert }}>{fmtEmp(r.baselineEmployment)}</td>
+                            <td className="py-2 px-1 text-right font-mono" style={{ color: C.ochre }}>{g.blsProjectedGrowth >= 0 ? "+" : ""}{g.blsProjectedGrowth.toFixed(0)}%</td>
                             <td className="py-2 pl-1 text-right font-mono font-semibold" style={{ color: r.finalPctChange >= 0 ? C.sage : C.rust }}>
                               {fmt(r.finalPctChange)}
                             </td>
@@ -1228,6 +1328,7 @@ export default function Home() {
                         <td className="py-2 pr-1" style={{ color: C.ink }}>Total</td>
                         <td className="py-2 px-1" colSpan={2}></td>
                         <td className="py-2 px-1 text-right font-mono" style={{ color: C.inkSec }}>{fmtEmp(totalUSEmployment)}</td>
+                        <td className="py-2 px-1 text-right font-mono" style={{ color: C.ochre }}>+7.7%</td>
                         <td className="py-2 pl-1 text-right font-mono" style={{ color: totalPctChange >= 0 ? C.sage : C.rust }}>
                           {fmt(totalPctChange)}
                         </td>
@@ -1236,7 +1337,7 @@ export default function Home() {
                   </table>
                 </div>
                 <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
-                  Obs = observed. Ceil = ceiling ({ceilingMode}). Click to select.
+                  Obs = observed. Ceil = ceiling ({ceilingMode}). BLS = pre-AI 2020-30 projection. Click to select.
                 </p>
               </Card>
             </div>
@@ -1313,8 +1414,88 @@ export default function Home() {
                 <p className="pt-1 text-[11px]" style={{ color: C.inkTert }}>
                   <strong style={{ color: C.inkSec }}>Sources:</strong> Eloundou et al. (2023) for theoretical exposure.
                   Massenkoff & McCrory (2026) via Anthropic Economic Index for observed exposure.
-                  BLS OES May 2021 for employment.
+                  BLS OES May 2021 for employment. BLS 2020-2030 projections for validation.
                 </p>
+              </div>
+            </Card>
+
+            {/* Tornado / Waterfall chart */}
+            <Card>
+              <SectionTitle sub={`How \u00B1 50% change in each parameter affects employment at year ${years}`}>
+                Parameter Importance: {selectedGroup.name}
+              </SectionTitle>
+              <div style={{ height: Math.max(200, tornadoData.length * 44 + 40) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={tornadoData.map((d) => ({
+                      label: d.label,
+                      lowDelta: d.low - d.base,
+                      highDelta: d.high - d.base,
+                      low: d.low,
+                      high: d.high,
+                      base: d.base,
+                    }))}
+                    layout="vertical"
+                    margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={C.border} />
+                    <XAxis type="number" tickFormatter={(v) => `${v > 0 ? "+" : ""}${Number(v).toFixed(1)}%`} />
+                    <YAxis type="category" dataKey="label" width={140} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={((value: any, name: any) => [
+                        `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(1)}%`,
+                        name === "lowDelta" ? "Low (-50%)" : "High (+50%)",
+                      ]) as any}
+                    />
+                    <ReferenceLine x={0} stroke={C.borderStrong} strokeWidth={1.5} />
+                    <Bar dataKey="lowDelta" name="Low (-50%)" fill={C.rust} opacity={0.7} barSize={14} radius={[4, 0, 0, 4]} />
+                    <Bar dataKey="highDelta" name="High (+50%)" fill={C.sage} opacity={0.7} barSize={14} radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
+                Bars show change from baseline ({tornadoData[0]?.base.toFixed(1)}%) when each parameter is varied &plusmn;50%.
+                Wider bars = more influential parameters. Demand elasticity is typically dominant.
+              </p>
+            </Card>
+
+            {/* Limitations & Caveats */}
+            <Card>
+              <SectionTitle>Known Limitations</SectionTitle>
+              <div className="text-[12px] leading-relaxed space-y-2" style={{ color: C.inkSec }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="rounded-lg p-3 border" style={{ background: C.surface2, borderColor: C.border }}>
+                    <div className="font-semibold text-[11px] mb-1" style={{ color: C.ink }}>No wage effects</div>
+                    <p className="text-[10px]">Employment changes assume elastic labor supply at constant wages. A wage model needs CES labor market structure with skill heterogeneity (cf. Katz &amp; Murphy, 1992).</p>
+                  </div>
+                  <div className="rounded-lg p-3 border" style={{ background: C.surface2, borderColor: C.border }}>
+                    <div className="font-semibold text-[11px] mb-1" style={{ color: C.ink }}>Observed &ne; true automation</div>
+                    <p className="text-[10px]">Massenkoff&apos;s observed exposure is an upper bound on I&#8320;. It includes augmentation (human+AI collaboration). True automation share is lower.</p>
+                  </div>
+                  <div className="rounded-lg p-3 border" style={{ background: C.surface2, borderColor: C.border }}>
+                    <div className="font-semibold text-[11px] mb-1" style={{ color: C.ink }}>Demand elasticity ungrounded</div>
+                    <p className="text-[10px]">Default &epsilon; values are heuristic, not calibrated. A&amp;R (2019) assume &epsilon;&asymp;1. Bessen (2019) range: 0.5&ndash;3+. Treat as assumed.</p>
+                  </div>
+                  <div className="rounded-lg p-3 border" style={{ background: C.surface2, borderColor: C.border }}>
+                    <div className="font-semibold text-[11px] mb-1" style={{ color: C.ink }}>No cross-occupation dynamics</div>
+                    <p className="text-[10px]">Each SOC group is modeled independently. In reality, displaced workers move across occupations, affecting wages and employment economy-wide.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-2">
+                  <div className="flex items-center gap-1.5">
+                    <ProvenanceBadge source="data" />
+                    <span className="text-[9px]" style={{ color: C.inkTert }}>Empirical (BLS, Anthropic, Eloundou)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ProvenanceBadge source="derived" />
+                    <span className="text-[9px]" style={{ color: C.inkTert }}>Formula from data</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <ProvenanceBadge source="assumed" />
+                    <span className="text-[9px]" style={{ color: C.inkTert }}>Heuristic &mdash; adjust with slider</span>
+                  </div>
+                </div>
               </div>
             </Card>
 
