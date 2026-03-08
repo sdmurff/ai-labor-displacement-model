@@ -1,26 +1,122 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-mono);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: #1a1a2e;
+  --color-ink-secondary: #4a4a68;
+  --color-ink-tertiary: #8888a4;
+
+  --color-surface-0: #f6f5f1;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #f0efeb;
+  --color-border: #e2e0d8;
+  --color-border-strong: #ccc9be;
+
+  --color-rust: #c44d2b;
+  --color-rust-light: #faf0ec;
+  --color-navy: #2b4c7e;
+  --color-navy-light: #edf2f8;
+  --color-sage: #3a7d5c;
+  --color-sage-light: #ecf5f0;
+  --color-ochre: #b8860b;
+  --color-ochre-light: #faf5e8;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+  background: var(--color-surface-0);
+  color: var(--color-ink);
+}
+
+/* Custom range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 20px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--color-navy);
+  border-radius: 50%;
+  margin-top: -5.5px;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 2px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--color-navy);
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-surface-2); }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }
+
+/* Recharts light-theme overrides */
+.recharts-cartesian-grid line {
+  stroke: var(--color-border) !important;
+}
+.recharts-text {
+  fill: var(--color-ink-tertiary) !important;
+  font-family: var(--font-body) !important;
+  font-size: 11px !important;
+}
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--color-surface-1) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+}
+.recharts-tooltip-item {
+  color: var(--color-ink) !important;
+  font-size: 12px !important;
+}
+.recharts-tooltip-label {
+  color: var(--color-ink-secondary) !important;
+  font-size: 11px !important;
+}
+.recharts-legend-item-text {
+  color: var(--color-ink-secondary) !important;
+  font-size: 11px !important;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px;
+}
+
+::selection {
+  background: rgba(43,76,126,0.2);
 }
