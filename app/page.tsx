@@ -1150,6 +1150,22 @@ function TechnicalMemo({ onSwitchToSim }: { onSwitchToSim: () => void }) {
           The model uses constant annual rates for adoption, new task creation, and productivity growth. In reality, these rates may accelerate, decelerate, or shift discontinuously as AI capabilities evolve. Bessen&rsquo;s lifecycle insight (Section 3) suggests demand elasticity in particular is not fixed but follows a technology lifecycle.
         </p>
 
+        <H3>Why we net BLS projections with this model</H3>
+        <p>
+          The bar chart adds the BLS 2024&ndash;34 baseline projection (prorated) to this model&rsquo;s AI effect. This is justified because <strong style={{ color: C.ink }}>BLS explicitly does not model AI&rsquo;s impact</strong>. From the BLS Employment Projections 2024&ndash;2034 Technical Note:
+        </p>
+        <Aside>
+          &ldquo;BLS assumes that labor productivity and technological progress will be in line with the historical experience&hellip; In a future state where technology advances much more rapidly than it has historically, it is unlikely that historical relationships would hold, and therefore BLS projection methods are unlikely to yield reasonable results.&rdquo;
+          <br /><br />
+          &ldquo;If this higher rate of productivity growth is uniform across all industries, there is no impact on BLS employment projections&hellip; BLS has no data on which to base these differential productivity impacts. BLS therefore chooses to present a scenario with technological progress in line with historical patterns.&rdquo;
+        </Aside>
+        <p>
+          In other words, BLS projections capture demographics, industry trends, and pre-AI technology trajectories &mdash; but treat AI as a non-event. Our model captures <em>only</em> the AI-specific displacement, reinstatement, and demand effects. The two are complementary, not overlapping, which makes netting them a valid (if approximate) combined forecast.
+        </p>
+        <p>
+          BLS also notes that &ldquo;technology impacts occupations, but that these changes tend to be gradual, not sudden&rdquo; &mdash; consistent with our S-curve adoption model. For details, see Machovec, Rieley, &amp; Rolen (2025), &ldquo;Incorporating AI impacts in BLS employment projections: occupational case studies,&rdquo; <em>Monthly Labor Review</em>.
+        </p>
+
         {/* ── Section 9: Full References ── */}
         <H2 id="full-references">9. Full References</H2>
         <div className="text-[14px] leading-[1.8] space-y-3" style={{ color: C.inkSec }}>
@@ -1205,7 +1221,10 @@ function TechnicalMemo({ onSwitchToSim }: { onSwitchToSim: () => void }) {
             U.S. Bureau of Labor Statistics. (2021). Occupational Employment and Wage Statistics (OEWS), May 2021.
           </p>
           <p>
-            U.S. Bureau of Labor Statistics. (2021). Employment Projections, 2020&ndash;2030.
+            U.S. Bureau of Labor Statistics. (2025). Employment Projections, 2024&ndash;2034. Technical Note.
+          </p>
+          <p>
+            Machovec, C., Rieley, M. J., &amp; Rolen, E. (2025). Incorporating AI impacts in BLS employment projections: occupational case studies. <em>Monthly Labor Review</em>, U.S. Bureau of Labor Statistics.
           </p>
         </div>
 
@@ -1809,7 +1828,7 @@ export default function Home() {
                 </BarChart>
               </ResponsiveContainer>
               <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
-                Hatched = BLS 2024&ndash;34 baseline (prorated to {years}yr, no AI). Solid = AI effect stacking from BLS endpoint. Together they show the net forecast.
+                Hatched = BLS 2024&ndash;34 baseline (prorated to {years}yr). BLS projections explicitly exclude AI effects, so netting them is valid. Solid = AI effect from simulation. See Technical Memo for methodology.
               </p>
             </Card>
 
