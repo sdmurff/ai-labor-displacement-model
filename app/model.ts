@@ -196,34 +196,34 @@ function estimateDefaults(soc: string, observed: number, beta: number): Omit<Tas
 // - alpha/beta/zeta: Eloundou et al. (2023) (occ_level.csv), employment-weighted avg of
 //   (dv_rating_* + human_rating_*) / 2 to major groups. α=E1, β=E1+0.5*E2, ζ=E1+E2.
 //   Note: occ_level.csv labels ζ as "gamma" — a dataset naming choice, not the paper's notation.
-// - blsProjectedGrowth: BLS 2020-2030 projections (occupations_projections_processed.csv),
+// - blsProjectedGrowth: BLS 2024-2034 projections (occupation.xlsx, Table 1.1),
 //   pre-AI baseline. Divergence from model is expected and informative.
 
 type RawSOC = { soc: string; name: string; employment: number; observed: number; alpha: number; beta: number; zeta: number; blsProjectedGrowth: number };
 
 const rawData: RawSOC[] = [
-  { soc: "11", name: "Management", employment: 8909920, observed: 0.1304, alpha: 0.1036, beta: 0.4507, zeta: 0.7979, blsProjectedGrowth: 9.3 },
-  { soc: "13", name: "Business & Finance", employment: 9053780, observed: 0.2844, alpha: 0.2086, beta: 0.5410, zeta: 0.8735, blsProjectedGrowth: 8.0 },
-  { soc: "15", name: "Computer & Math", employment: 4654750, observed: 0.3577, alpha: 0.3827, beta: 0.6526, zeta: 0.9225, blsProjectedGrowth: 14.1 },
-  { soc: "17", name: "Architecture & Engineering", employment: 2436520, observed: 0.0451, alpha: 0.1961, beta: 0.4880, zeta: 0.7799, blsProjectedGrowth: 5.6 },
-  { soc: "19", name: "Life & Social Sciences", employment: 1273610, observed: 0.1045, alpha: 0.2085, beta: 0.4864, zeta: 0.7643, blsProjectedGrowth: 7.9 },
-  { soc: "21", name: "Social Services", employment: 2239700, observed: 0.0401, alpha: 0.1678, beta: 0.3420, zeta: 0.5163, blsProjectedGrowth: 12.4 },
-  { soc: "23", name: "Legal", employment: 1178140, observed: 0.2037, alpha: 0.0963, beta: 0.4634, zeta: 0.8304, blsProjectedGrowth: 8.8 },
-  { soc: "25", name: "Education & Library", employment: 8191940, observed: 0.1819, alpha: 0.1413, beta: 0.3594, zeta: 0.5776, blsProjectedGrowth: 10.1 },
-  { soc: "27", name: "Arts & Media", employment: 1815270, observed: 0.1916, alpha: 0.2087, beta: 0.4691, zeta: 0.7296, blsProjectedGrowth: 13.1 },
-  { soc: "29", name: "Healthcare Practitioners", employment: 8787720, observed: 0.0547, alpha: 0.1122, beta: 0.3462, zeta: 0.5801, blsProjectedGrowth: 10.8 },
-  { soc: "31", name: "Healthcare Support", employment: 6603660, observed: 0.0226, alpha: 0.0826, beta: 0.1745, zeta: 0.2663, blsProjectedGrowth: 23.1 },
-  { soc: "33", name: "Protective Service", employment: 3385060, observed: 0.0288, alpha: 0.1407, beta: 0.2595, zeta: 0.3783, blsProjectedGrowth: 8.4 },
-  { soc: "35", name: "Food & Serving", employment: 11201470, observed: 0.0087, alpha: 0.0752, beta: 0.1319, zeta: 0.1886, blsProjectedGrowth: 19.6 },
-  { soc: "37", name: "Grounds Maintenance", employment: 4108810, observed: 0.0057, alpha: 0.0160, beta: 0.0419, zeta: 0.0678, blsProjectedGrowth: 7.5 },
-  { soc: "39", name: "Personal Care", employment: 2566450, observed: 0.0210, alpha: 0.1410, beta: 0.2152, zeta: 0.2895, blsProjectedGrowth: 21.7 },
-  { soc: "41", name: "Sales", employment: 13256290, observed: 0.2690, alpha: 0.2177, beta: 0.4277, zeta: 0.6377, blsProjectedGrowth: -1.4 },
-  { soc: "43", name: "Office & Admin", employment: 18299370, observed: 0.3434, alpha: 0.3141, beta: 0.5611, zeta: 0.8081, blsProjectedGrowth: -2.8 },
-  { soc: "45", name: "Agriculture", employment: 451850, observed: 0.0127, alpha: 0.0390, beta: 0.1089, zeta: 0.1789, blsProjectedGrowth: 2.5 },
-  { soc: "47", name: "Construction", employment: 5848940, observed: 0.0111, alpha: 0.0251, beta: 0.1230, zeta: 0.2209, blsProjectedGrowth: 5.7 },
-  { soc: "49", name: "Installation & Repair", employment: 5574400, observed: 0.0156, alpha: 0.0562, beta: 0.1363, zeta: 0.2165, blsProjectedGrowth: 6.7 },
-  { soc: "51", name: "Production", employment: 8408020, observed: 0.0068, alpha: 0.0545, beta: 0.1295, zeta: 0.2046, blsProjectedGrowth: -0.4 },
-  { soc: "53", name: "Transportation", employment: 12639900, observed: 0.0021, alpha: 0.0658, beta: 0.1348, zeta: 0.2038, blsProjectedGrowth: 8.8 },
+  { soc: "11", name: "Management", employment: 8909920, observed: 0.1304, alpha: 0.1036, beta: 0.4507, zeta: 0.7979, blsProjectedGrowth: 6.1 },
+  { soc: "13", name: "Business & Finance", employment: 9053780, observed: 0.2844, alpha: 0.2086, beta: 0.5410, zeta: 0.8735, blsProjectedGrowth: 5.2 },
+  { soc: "15", name: "Computer & Math", employment: 4654750, observed: 0.3577, alpha: 0.3827, beta: 0.6526, zeta: 0.9225, blsProjectedGrowth: 10.1 },
+  { soc: "17", name: "Architecture & Engineering", employment: 2436520, observed: 0.0451, alpha: 0.1961, beta: 0.4880, zeta: 0.7799, blsProjectedGrowth: 5.3 },
+  { soc: "19", name: "Life & Social Sciences", employment: 1273610, observed: 0.1045, alpha: 0.2085, beta: 0.4864, zeta: 0.7643, blsProjectedGrowth: 5.0 },
+  { soc: "21", name: "Social Services", employment: 2239700, observed: 0.0401, alpha: 0.1678, beta: 0.3420, zeta: 0.5163, blsProjectedGrowth: 6.6 },
+  { soc: "23", name: "Legal", employment: 1178140, observed: 0.2037, alpha: 0.0963, beta: 0.4634, zeta: 0.8304, blsProjectedGrowth: 2.7 },
+  { soc: "25", name: "Education & Library", employment: 8191940, observed: 0.1819, alpha: 0.1413, beta: 0.3594, zeta: 0.5776, blsProjectedGrowth: 0.6 },
+  { soc: "27", name: "Arts & Media", employment: 1815270, observed: 0.1916, alpha: 0.2087, beta: 0.4691, zeta: 0.7296, blsProjectedGrowth: 2.8 },
+  { soc: "29", name: "Healthcare Practitioners", employment: 8787720, observed: 0.0547, alpha: 0.1122, beta: 0.3462, zeta: 0.5801, blsProjectedGrowth: 7.2 },
+  { soc: "31", name: "Healthcare Support", employment: 6603660, observed: 0.0226, alpha: 0.0826, beta: 0.1745, zeta: 0.2663, blsProjectedGrowth: 12.4 },
+  { soc: "33", name: "Protective Service", employment: 3385060, observed: 0.0288, alpha: 0.1407, beta: 0.2595, zeta: 0.3783, blsProjectedGrowth: 0.8 },
+  { soc: "35", name: "Food & Serving", employment: 11201470, observed: 0.0087, alpha: 0.0752, beta: 0.1319, zeta: 0.1886, blsProjectedGrowth: 3.5 },
+  { soc: "37", name: "Grounds Maintenance", employment: 4108810, observed: 0.0057, alpha: 0.0160, beta: 0.0419, zeta: 0.0678, blsProjectedGrowth: 2.0 },
+  { soc: "39", name: "Personal Care", employment: 2566450, observed: 0.0210, alpha: 0.1410, beta: 0.2152, zeta: 0.2895, blsProjectedGrowth: 4.2 },
+  { soc: "41", name: "Sales", employment: 13256290, observed: 0.2690, alpha: 0.2177, beta: 0.4277, zeta: 0.6377, blsProjectedGrowth: -2.0 },
+  { soc: "43", name: "Office & Admin", employment: 18299370, observed: 0.3434, alpha: 0.3141, beta: 0.5611, zeta: 0.8081, blsProjectedGrowth: -3.9 },
+  { soc: "45", name: "Agriculture", employment: 451850, observed: 0.0127, alpha: 0.0390, beta: 0.1089, zeta: 0.1789, blsProjectedGrowth: -2.5 },
+  { soc: "47", name: "Construction", employment: 5848940, observed: 0.0111, alpha: 0.0251, beta: 0.1230, zeta: 0.2209, blsProjectedGrowth: 5.2 },
+  { soc: "49", name: "Installation & Repair", employment: 5574400, observed: 0.0156, alpha: 0.0562, beta: 0.1363, zeta: 0.2165, blsProjectedGrowth: 4.6 },
+  { soc: "51", name: "Production", employment: 8408020, observed: 0.0068, alpha: 0.0545, beta: 0.1295, zeta: 0.2046, blsProjectedGrowth: -1.1 },
+  { soc: "53", name: "Transportation", employment: 12639900, observed: 0.0021, alpha: 0.0658, beta: 0.1348, zeta: 0.2038, blsProjectedGrowth: 4.1 },
 ];
 
 export const socGroups: SOCGroup[] = rawData.map((d) => ({

@@ -1321,9 +1321,8 @@ export default function Home() {
     return tornadoAnalysis(selectedGroup, effectiveOverrides[selectedSoc] || {}, years);
   }, [selectedGroup, effectiveOverrides, selectedSoc, years]);
 
-  const blsInRange = BASE_YEAR + years <= 2030;
-  const [showBLSPref, setShowBLSPref] = useState(true);
-  const showBLS = showBLSPref && blsInRange;
+  const BLS_YEARS = 10; // BLS projection covers 2024-2034
+  const BLS_END = 2034;
 
   const totalFinal = results.reduce((s, r) => s + r.finalEmployment, 0);
   const totalPctChange = ((totalFinal / totalUSEmployment) - 1) * 100;
@@ -1346,6 +1345,15 @@ export default function Home() {
   const otherBase = totalUSEmployment - knowledgeBase;
   const otherFinal = totalFinal - knowledgeFinal;
   const otherPct = ((otherFinal / otherBase) - 1) * 100;
+
+  // BLS baseline (prorated) for comparison
+  const blsTotalPct = socGroups.reduce((s, g) => s + g.blsProjectedGrowth * g.employment, 0) / totalUSEmployment * (years / BLS_YEARS);
+  const blsKnowledgePct = socGroups.filter((g) => knowledgeSOCs.includes(g.soc)).reduce((s, g) => s + g.blsProjectedGrowth * g.employment, 0) / knowledgeBase * (years / BLS_YEARS);
+  const blsOtherPct = socGroups.filter((g) => !knowledgeSOCs.includes(g.soc)).reduce((s, g) => s + g.blsProjectedGrowth * g.employment, 0) / otherBase * (years / BLS_YEARS);
+  // Net = BLS + AI effect
+  const netTotalPct = blsTotalPct + totalPctChange;
+  const netKnowledgePct = blsKnowledgePct + knowledgePct;
+  const netOtherPct = blsOtherPct + otherPct;
 
   return (
     <div className="min-h-screen" style={{ background: C.surface0 }}>
@@ -1402,8 +1410,8 @@ export default function Home() {
               <SectionTitle sub="Configure time horizon and ceiling scenario">Simulation</SectionTitle>
               <Slider
                 label="Time Horizon" value={years} onChange={setYears}
-                min={0} max={20} step={1} suffix={` → ${BASE_YEAR + years}`}
-                tooltip="How many years into the future to project from 2026. The model simulates year-by-year with compounding effects — adoption follows an S-curve, new tasks accumulate, and demand expands. Longer horizons amplify all three forces. At 0, you see current state only."
+                min={0} max={BLS_END - BASE_YEAR} step={1} suffix={` → ${BASE_YEAR + years}`}
+                tooltip={`How many years into the future to project from ${BASE_YEAR}. Capped at ${BLS_END} to align with BLS projections. The model simulates year-by-year with compounding effects — adoption follows an S-curve, new tasks accumulate, and demand expands.`}
               />
 
               <div className="mb-4">
@@ -1489,19 +1497,7 @@ export default function Home() {
                 Reset All to Defaults
               </button>
 
-              {/* Summary stats */}
-              <div className="space-y-2.5 mt-5">
-                <StatCard
-                  label="All Occupations"
-                  value={fmt(totalPctChange)}
-                  positive={totalPctChange >= 0}
-                  sub={`${fmtEmp(totalUSEmployment)} \u2192 ${fmtEmp(totalFinal)}`}
-                />
-                <div className="grid grid-cols-2 gap-2.5">
-                  <StatCard label="Knowledge" value={fmt(knowledgePct)} positive={knowledgePct >= 0} />
-                  <StatCard label="Other" value={fmt(otherPct)} positive={otherPct >= 0} />
-                </div>
-              </div>
+              {/* Summary stats moved to main panel */}
             </Card>
 
             {/* Per-group parameters */}
@@ -1527,7 +1523,7 @@ export default function Home() {
                   { label: "Theoretical \u03B6", value: `${(selectedGroup.zeta * 100).toFixed(1)}%` },
                   { label: "Adoption ratio", value: `${selectedGroup.beta > 0 ? ((selectedGroup.observed / selectedGroup.beta) * 100).toFixed(0) : 0}%` },
                   { label: "Employment", value: fmtEmp(selectedGroup.employment) },
-                  { label: "BLS 2020-30 (pre-AI)", value: `${selectedGroup.blsProjectedGrowth >= 0 ? "+" : ""}${selectedGroup.blsProjectedGrowth.toFixed(1)}%` },
+                  { label: `BLS 2024–34 (${years}yr)`, value: `${selectedGroup.blsProjectedGrowth >= 0 ? "+" : ""}${(selectedGroup.blsProjectedGrowth * years / BLS_YEARS).toFixed(1)}%` },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between text-[10px]">
                     <span style={{ color: C.inkTert }}>{row.label}</span>
@@ -1638,33 +1634,59 @@ export default function Home() {
               </div>
             </Card>
 
+            {/* Aggregate impact summary */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "All Occupations", bls: blsTotalPct, ai: totalPctChange, net: netTotalPct, emp: totalUSEmployment },
+                { label: "Knowledge Work", bls: blsKnowledgePct, ai: knowledgePct, net: netKnowledgePct, emp: knowledgeBase },
+                { label: "Other Occupations", bls: blsOtherPct, ai: otherPct, net: netOtherPct, emp: otherBase },
+              ].map((d) => (
+                <div key={d.label} className="rounded-xl p-4 border" style={{ background: d.net >= 0 ? C.sageLight : C.rustLight, borderColor: d.net >= 0 ? "#d4e8dc" : "#f0ddd6" }}>
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] mb-2" style={{ color: C.inkTert }}>{d.label}</div>
+                  <div className="font-mono text-2xl font-bold mb-1" style={{ color: d.net >= 0 ? C.sage : C.rust }}>
+                    {fmt(d.net)}
+                  </div>
+                  <div className="text-[10px] font-mono space-y-0.5" style={{ color: C.inkSec }}>
+                    <div>{fmtEmp(d.emp)} base &middot; Net {Math.round(d.emp * d.net / 100).toLocaleString()} jobs</div>
+                    <div style={{ color: C.ochre }}>BLS baseline: {fmt(d.bls)} ({Math.round(d.emp * d.bls / 100).toLocaleString()})</div>
+                    <div style={{ color: d.ai >= 0 ? C.sage : C.rust }}>AI effect: {fmt(d.ai)} ({Math.round(d.emp * d.ai / 100).toLocaleString()})</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Bar chart */}
             <Card>
               <div className="flex justify-between items-start">
                 <SectionTitle sub={`Ceiling: ${ceilingMode === "alpha" ? "\u03B1 (direct LLM only)" : ceilingMode === "beta" ? "\u03B2 (partial tools)" : "\u03B6 (full tools)"} \u00B7 Click bars to select`}>
                   Employment Change by {BASE_YEAR + years}
                 </SectionTitle>
-                {blsInRange && (
-                  <label className="flex items-center gap-1.5 text-[10px] cursor-pointer mt-1" style={{ color: C.inkTert }}>
-                    <input type="checkbox" checked={showBLSPref} onChange={(e) => setShowBLSPref(e.target.checked)} className="rounded" />
-                    Show BLS 2020–30
-                  </label>
-                )}
               </div>
               <ResponsiveContainer width="100%" height={600}>
                 <BarChart
-                  data={sortedResults.map((r) => {
-                    const g = socGroups.find((g) => g.soc === r.soc)!;
-                    return {
-                      name: r.name,
-                      soc: r.soc,
-                      pctChange: r.finalPctChange,
-                      emp: r.baselineEmployment,
-                      blsProjected: showBLS ? g.blsProjectedGrowth : undefined,
-                    };
-                  })}
+                  data={(() => {
+                    const items = sortedResults.map((r) => {
+                      const g = socGroups.find((g) => g.soc === r.soc)!;
+                      const bls = g.blsProjectedGrowth * (years / BLS_YEARS);
+                      const ai = r.finalPctChange;
+                      const net = bls + ai;
+                      return {
+                        name: r.name,
+                        soc: r.soc,
+                        emp: r.baselineEmployment,
+                        bls, ai, net,
+                        // Range bars: [start, end] for each segment
+                        blsRange: [0, bls] as [number, number],
+                        aiRange: [Math.min(bls, net), Math.max(bls, net)] as [number, number],
+                        // Track direction for coloring
+                        aiPositive: ai >= 0,
+                      };
+                    });
+                    return items.sort((a, b) => a.net - b.net);
+                  })()}
                   layout="vertical"
                   margin={{ top: 5, right: 80, left: 10, bottom: 5 }}
+                  barGap={-18}
                   onClick={(state: Record<string, unknown>) => {
                     const payload = state?.activePayload as Array<{ payload: { soc: string } }> | undefined;
                     if (payload?.[0]?.payload?.soc) {
@@ -1676,13 +1698,23 @@ export default function Home() {
                   <XAxis type="number" tickFormatter={(v) => `${v}%`} />
                   <YAxis type="category" dataKey="name" width={175} tick={{ fontSize: 11 }} />
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={((value: any, name: any, props: any) => {
-                      const v = Number(value);
-                      if (name === "blsProjected") return [`${v.toFixed(1)}%`, "BLS 2020-30 (pre-AI)"];
-                      const emp = props?.payload?.emp;
-                      return [`${v.toFixed(1)}%${emp ? ` (${fmtEmp(emp)} workers)` : ""}`, "Model Projection"];
-                    }) as any}
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0]?.payload;
+                      if (!d) return null;
+                      return (
+                        <div className="rounded-lg border p-2.5 text-[11px] shadow-lg" style={{ background: C.surface1, borderColor: C.border }}>
+                          <div className="font-semibold mb-1.5" style={{ color: C.ink }}>{d.name}</div>
+                          <div className="space-y-0.5">
+                            <div style={{ color: C.ochre }}>BLS baseline: {fmt(d.bls)} ({Math.round(d.emp * d.bls / 100).toLocaleString()} jobs)</div>
+                            <div style={{ color: d.ai >= 0 ? C.sage : C.rust }}>AI effect: {fmt(d.ai)} ({Math.round(d.emp * d.ai / 100).toLocaleString()} jobs)</div>
+                            <div className="border-t pt-1 mt-1 font-semibold" style={{ borderColor: C.border, color: d.net >= 0 ? C.sage : C.rust }}>
+                              Net: {fmt(d.net)} ({Math.round(d.emp * d.net / 100).toLocaleString()} jobs)
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
                   />
                   <Legend
                     verticalAlign="top"
@@ -1690,44 +1722,95 @@ export default function Home() {
                     content={() => (
                       <div className="flex items-center justify-center gap-5 text-[11px] pb-1" style={{ color: C.inkSec }}>
                         <span className="flex items-center gap-1.5">
-                          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: C.sage, opacity: 0.8 }} />
-                          Model: Growth
+                          <svg width="16" height="12"><rect width="16" height="12" fill="url(#hatch)" stroke="#999" strokeWidth="0.5" rx="2" /></svg>
+                          BLS baseline (pre-AI)
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: C.rust, opacity: 0.8 }} />
-                          Model: Decline
+                          <span className="inline-block w-4 h-3 rounded-sm" style={{ background: C.sage, opacity: 0.6 }} />
+                          AI grows jobs
                         </span>
-                        {showBLS && (
-                          <span className="flex items-center gap-1.5">
-                            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: C.ochre, opacity: 0.5 }} />
-                            BLS 2020–30 (pre-AI)
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block w-4 h-3 rounded-sm" style={{ background: C.rust, opacity: 0.6 }} />
+                          AI shrinks jobs
+                        </span>
                       </div>
                     )}
                   />
+                  <defs>
+                    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                      <line x1="0" y1="0" x2="0" y2="6" stroke="#666" strokeWidth="1.5" opacity="0.45" />
+                    </pattern>
+                  </defs>
                   <ReferenceLine x={0} stroke={C.borderStrong} strokeWidth={1.5} />
-                  {showBLS && (
-                    <Bar dataKey="blsProjected" name="BLS 2020-30 (pre-AI)" radius={[0, 3, 3, 0]} barSize={8} fill={C.ochre} opacity={0.5} />
-                  )}
-                  <Bar dataKey="pctChange" name="Model" radius={[0, 4, 4, 0]} barSize={18} cursor="pointer">
-                    {sortedResults.map((r, i) => (
-                      <Cell
-                        key={i}
-                        fill={r.finalPctChange >= 0 ? C.sage : C.rust}
-                        opacity={r.soc === selectedSoc ? 1 : 0.6}
-                        stroke={r.soc === selectedSoc ? C.navy : "none"}
-                        strokeWidth={r.soc === selectedSoc ? 2 : 0}
-                      />
-                    ))}
+                  {/* BLS baseline — hatched range bar from 0 to bls */}
+                  <Bar dataKey="blsRange" barSize={18} fill="url(#hatch)" stroke="#999" strokeWidth={0.5} strokeOpacity={0.3} isAnimationActive={false} />
+                  {/* AI effect — solid range bar from bls to net */}
+                  <Bar
+                    dataKey="aiRange"
+                    barSize={18}
+                    cursor="pointer"
+                    label={({ x, y, width, height, index }: any) => {
+                      const sorted = sortedResults.map((r) => {
+                        const g = socGroups.find((g) => g.soc === r.soc)!;
+                        const net = g.blsProjectedGrowth * (years / BLS_YEARS) + r.finalPctChange;
+                        return { ...r, net };
+                      }).sort((a, b) => a.net - b.net);
+                      const item = sorted[index];
+                      if (!item) return null;
+                      const netJobs = Math.round(item.baselineEmployment * item.net / 100);
+                      const sign = netJobs >= 0 ? "+" : "";
+                      const label = Math.abs(netJobs) >= 1000
+                        ? `${sign}${(netJobs / 1000).toFixed(0)}k`
+                        : `${sign}${netJobs}`;
+                      // Find the rightmost/leftmost edge of the full bar (at net position)
+                      // For the label, we need the tip of the combined bar
+                      const d = sorted[index];
+                      const g = socGroups.find((g) => g.soc === d.soc)!;
+                      const bls = g.blsProjectedGrowth * (years / BLS_YEARS);
+                      // The AI range bar goes from min(bls,net) to max(bls,net)
+                      // The net tip is at whichever end is further from zero
+                      // If ai >= 0: net > bls, so tip is at x + width (right edge)
+                      // If ai < 0: net < bls, so tip is at x (left edge)
+                      const tipX = d.finalPctChange >= 0 ? x + width + 4 : x - 4;
+                      return (
+                        <text
+                          x={tipX}
+                          y={y + height / 2}
+                          textAnchor={item.net >= 0 ? "start" : "end"}
+                          dominantBaseline="central"
+                          fontSize={9}
+                          fontFamily="monospace"
+                          fill={item.net >= 0 ? C.sage : C.rust}
+                          opacity={0.8}
+                        >
+                          {label}
+                        </text>
+                      );
+                    }}
+                  >
+                    {(() => {
+                      const items = sortedResults.map((r) => {
+                        const g = socGroups.find((g) => g.soc === r.soc)!;
+                        const ai = r.finalPctChange;
+                        const net = g.blsProjectedGrowth * (years / BLS_YEARS) + ai;
+                        return { soc: r.soc, ai, net };
+                      }).sort((a, b) => a.net - b.net);
+                      return items.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={d.ai >= 0 ? C.sage : C.rust}
+                          opacity={d.soc === selectedSoc ? 0.9 : 0.6}
+                          stroke={d.soc === selectedSoc ? C.navy : "none"}
+                          strokeWidth={d.soc === selectedSoc ? 2 : 0}
+                        />
+                      ));
+                    })()}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              {showBLS && (
-                <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
-                  BLS bars show total projected growth over 2020&ndash;2030 (pre-AI). Model bars show change from {BASE_YEAR}&ndash;{BASE_YEAR + years}. Different start years and assumptions &mdash; compare direction and magnitude, not exact values.
-                </p>
-              )}
+              <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
+                Hatched = BLS 2024&ndash;34 baseline (prorated to {years}yr, no AI). Solid = AI effect stacking from BLS endpoint. Together they show the net forecast.
+              </p>
             </Card>
 
             {/* Timeline row */}
@@ -1846,7 +1929,7 @@ export default function Home() {
                         <td className="py-2 pr-1" style={{ color: C.ink }}>Total</td>
                         <td className="py-2 px-1" colSpan={2}></td>
                         <td className="py-2 px-1 text-right font-mono" style={{ color: C.inkSec }}>{fmtEmp(totalUSEmployment)}</td>
-                        <td className="py-2 px-1 text-right font-mono" style={{ color: C.ochre }}>+7.7%</td>
+                        <td className="py-2 px-1 text-right font-mono" style={{ color: C.ochre }}>+2.8%</td>
                         <td className="py-2 pl-1 text-right font-mono" style={{ color: totalPctChange >= 0 ? C.sage : C.rust }}>
                           {fmt(totalPctChange)}
                         </td>
@@ -1855,7 +1938,7 @@ export default function Home() {
                   </table>
                 </div>
                 <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
-                  Obs = observed. Ceil = ceiling ({ceilingMode}). BLS = pre-AI 2020-30 projection. Click to select.
+                  Obs = observed. Ceil = ceiling ({ceilingMode}). BLS = pre-AI 2024–34 projection (full 10-yr). Click to select.
                 </p>
               </Card>
             </div>
@@ -1932,7 +2015,7 @@ export default function Home() {
                 <p className="pt-1 text-[11px]" style={{ color: C.inkTert }}>
                   <strong style={{ color: C.inkSec }}>Sources:</strong> Eloundou et al. (2023) for theoretical exposure.
                   Massenkoff & McCrory (2026) via Anthropic Economic Index for observed exposure.
-                  BLS OES May 2021 for employment. BLS 2020-2030 projections for validation.
+                  BLS OES May 2021 for employment. BLS 2024–2034 projections for validation.
                 </p>
               </div>
             </Card>
