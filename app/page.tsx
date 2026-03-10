@@ -1166,6 +1166,87 @@ function TechnicalMemo({ onSwitchToSim }: { onSwitchToSim: () => void }) {
           BLS also notes that &ldquo;technology impacts occupations, but that these changes tend to be gradual, not sudden&rdquo; &mdash; consistent with our S-curve adoption model. For details, see Machovec, Rieley, &amp; Rolen (2025), &ldquo;Incorporating AI impacts in BLS employment projections: occupational case studies,&rdquo; <em>Monthly Labor Review</em>.
         </p>
 
+        <H3>Partial double-counting caveat</H3>
+        <p>
+          Despite the general BLS stance above, the 2024&ndash;34 projections <em>do</em> incorporate AI adjustments for a handful of specific occupations. Machovec, Rieley, &amp; Rolen (2025) document that starting with the 2023&ndash;33 cycle, BLS began making targeted, occupation-level AI adjustments using a three-step methodology: (1) identify occupations with AI-exposed tasks, (2) determine the direction and magnitude of impact via analyst judgment, and (3) adjust the projected growth rate.
+        </p>
+        <p>
+          The affected SOC major groups in the 2024&ndash;34 vintage include:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 text-[14px]" style={{ color: C.inkSec }}>
+          <li><strong>13 &mdash; Business &amp; Finance:</strong> Claims adjusters (&minus;4.4%), insurance appraisers, credit analysts (&minus;3.9%), personal financial advisors</li>
+          <li><strong>15 &mdash; Computer &amp; Math:</strong> Software developers (+17.9% in 2023&ndash;33, <em>boosted</em> by AI-driven demand &mdash; a Jevons effect), database administrators, database architects</li>
+          <li><strong>23 &mdash; Legal:</strong> Lawyers, paralegals and legal assistants</li>
+          <li><strong>41 &mdash; Sales:</strong> Selected customer-facing roles</li>
+          <li><strong>43 &mdash; Office &amp; Admin:</strong> Selected clerical roles</li>
+        </ul>
+        <p>
+          For these five groups, the bar chart&rsquo;s &ldquo;BLS + AI effect&rdquo; waterfall partially double-counts the AI signal. Comparing pre-AI (2022&ndash;32) vs. post-AI (2023&ndash;33) BLS projections gives a rough sense of the adjustment magnitude:
+        </p>
+        <table className="text-[13px] w-full border-collapse my-3" style={{ color: C.inkSec }}>
+          <thead>
+            <tr className="border-b-2" style={{ borderColor: C.border }}>
+              <th className="text-left py-1.5 pr-3">SOC Group</th>
+              <th className="text-right py-1.5 px-3">2022&ndash;32</th>
+              <th className="text-right py-1.5 px-3">2023&ndash;33</th>
+              <th className="text-right py-1.5 px-3">2024&ndash;34</th>
+              <th className="text-right py-1.5 pl-3">&Delta; (raw)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b" style={{ borderColor: C.border, background: C.surface0 }}>
+              <td className="py-1.5 pr-3 font-medium" colSpan={5}>AI-adjusted groups</td>
+            </tr>
+            <tr className="border-b" style={{ borderColor: C.border }}>
+              <td className="py-1.5 pr-3">15 &mdash; Computer &amp; Math</td>
+              <td className="text-right py-1.5 px-3">+15.2%</td>
+              <td className="text-right py-1.5 px-3">+12.9%</td>
+              <td className="text-right py-1.5 px-3">+10.1%</td>
+              <td className="text-right py-1.5 pl-3">&minus;5.1 pp</td>
+            </tr>
+            <tr className="border-b" style={{ borderColor: C.border }}>
+              <td className="py-1.5 pr-3 pl-4 text-[12px]">Software developers</td>
+              <td className="text-right py-1.5 px-3">+25.7%</td>
+              <td className="text-right py-1.5 px-3">+17.9%</td>
+              <td className="text-right py-1.5 px-3">&mdash;</td>
+              <td className="text-right py-1.5 pl-3">&minus;7.8 pp</td>
+            </tr>
+            <tr className="border-b" style={{ borderColor: C.border }}>
+              <td className="py-1.5 pr-3">41 &mdash; Sales</td>
+              <td className="text-right py-1.5 px-3">&minus;2.6%</td>
+              <td className="text-right py-1.5 px-3">&minus;2.0%</td>
+              <td className="text-right py-1.5 px-3">&minus;2.0%</td>
+              <td className="text-right py-1.5 pl-3">+0.6 pp</td>
+            </tr>
+            <tr className="border-b" style={{ borderColor: C.border }}>
+              <td className="py-1.5 pr-3">43 &mdash; Office &amp; Admin</td>
+              <td className="text-right py-1.5 px-3">&minus;6.2%</td>
+              <td className="text-right py-1.5 px-3">&minus;3.5%</td>
+              <td className="text-right py-1.5 px-3">&minus;3.9%</td>
+              <td className="text-right py-1.5 pl-3">+2.3 pp</td>
+            </tr>
+            <tr className="border-b" style={{ borderColor: C.border, background: C.surface0 }}>
+              <td className="py-1.5 pr-3 font-medium" colSpan={5}>Baseline</td>
+            </tr>
+            <tr className="border-b" style={{ borderColor: C.border }}>
+              <td className="py-1.5 pr-3">Total, all occupations</td>
+              <td className="text-right py-1.5 px-3">+2.8%</td>
+              <td className="text-right py-1.5 px-3">+4.0%</td>
+              <td className="text-right py-1.5 px-3">&mdash;</td>
+              <td className="text-right py-1.5 pl-3">+1.2 pp</td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="text-[13px] italic" style={{ color: C.inkTert }}>
+          Sources: Colato &amp; Ice (2023), BLS News Release USDL-24-1776 (2024), BLS Employment Projections 2024&ndash;34. &Delta; shows raw 2022&ndash;32 &rarr; 2023&ndash;33 change; adjust by &minus;1.2 pp for the baseline shift.
+        </p>
+        <p>
+          Computer &amp; Math (SOC 15) stands out: it declined 2.3 pp in raw terms despite the economy-wide baseline <em>rising</em> 1.2 pp &mdash; an adjusted decline of ~3.5 pp. The trend continues into 2024&ndash;34 (+10.1%), suggesting ongoing downward revision. Meanwhile, Office &amp; Admin and Sales <em>improved</em> in raw terms, though after adjusting for the baseline shift, the changes are modest. The comparison is imperfect &mdash; base years differ and other economic factors changed &mdash; but it suggests the AI adjustment at the major-group level is on the order of a few percentage points. The double-count is therefore small relative to this model&rsquo;s total AI effect, but users should be aware of it for the five groups listed above.
+        </p>
+        <Aside>
+          <strong>Jevons effect in BLS data:</strong> Notably, BLS <em>boosted</em> software developer projections for AI-driven demand (new code generation, AI tool development), even while reducing projections for other IT roles. This mirrors exactly the demand-expansion channel (&epsilon; &gt; 1) in our model &mdash; empirical validation that automation can increase employment in elastic-demand occupations.
+        </Aside>
+
         {/* ── Section 9: Full References ── */}
         <H2 id="full-references">9. Full References</H2>
         <div className="text-[14px] leading-[1.8] space-y-3" style={{ color: C.inkSec }}>
@@ -1828,7 +1909,7 @@ export default function Home() {
                 </BarChart>
               </ResponsiveContainer>
               <p className="text-[10px] mt-2" style={{ color: C.inkTert }}>
-                Hatched = BLS 2024&ndash;34 baseline (prorated to {years}yr). BLS projections explicitly exclude AI effects, so netting them is valid. Solid = AI effect from simulation. See Technical Memo for methodology.
+                Hatched = BLS 2024&ndash;34 baseline (prorated to {years}yr). BLS projections largely exclude AI effects, making netting valid &mdash; though SOC 13, 15, 23, 41, 43 have partial AI adjustments (see Technical Memo). Solid = AI effect from simulation.
               </p>
             </Card>
 
